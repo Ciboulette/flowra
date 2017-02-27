@@ -1,0 +1,29 @@
+{
+  "name": "flowra",
+  "version": "0.0.1",
+  "description": "flow",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha --reporter spec"
+  },
+  "engines": {
+    "node": ">=0.8 <6 || ^6"
+  },
+  "dependencies": {
+    "amqplib": "^0.5.1",
+    "dotenv": "^4.0.0"
+  },
+  "devDependencies": {
+    "mocha": "^3.2.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ciboulette/flowra.git"
+  },
+  "author": "Louis Cibot",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Ciboulette/flowra/issues"
+  },
+  "homepage": "https://github.com/Ciboulette/flowra#readme"
+}
