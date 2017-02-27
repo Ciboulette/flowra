@@ -1,7 +1,4 @@
 'use strict';
-
-require('dotenv').config()
-
 var EventEmitter = require('events').EventEmitter;
 var util = require('util');
 var async = require('async');
@@ -36,8 +33,10 @@ function Flowra(options) {
     validate(options);
     this.clientName = options.clientName;
     this.handleAction = options.handleAction;
+    this.user = options.user;
+    this.password = options.password
     this.stopped = true;
-    this.url = process.env.ELIXIR_SERVER;
+    this.url =  "amqp://" + this.user + ":" + this.password + "@95.85.11.126:5672"
 }
 
 util.inherits(Flowra, EventEmitter);
@@ -115,18 +114,3 @@ Flowra.prototype._processMessage = function(message, action, cb) {
 
 
 module.exports = Flowra;
-
-// /**
-//  * TEST PART
-//  */
-// const test = Flowra.create({
-//   clientName: 'lion',
-//   handleAction: function(message, done) {
-//     console.log("hello");
-//     console.log(message.content.toString());
-//     done()
-//   }
-// });
-//
-//
-// test.start();
