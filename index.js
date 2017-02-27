@@ -82,10 +82,13 @@ Flowra.prototype._connect = function() {
                 var ok = ok.then(function() {
                     ch.prefetch(1);
                     return ch.consume(clientName, function(msg) {
-                      _processMessage(msg, handleAction, function() {
-                        ch.sendToQueue(msg.properties.replyTo, new Buffer("ok"), {correlationId: msg.properties.correlationId});
-                        ch.ack(msg);
-                      });
+                      var data = JSON.parse(msg.content.toString());
+                      if(clientName == data.client) {
+                        _processMessage(data, handleAction, function() {
+                          ch.sendToQueue(msg.properties.replyTo, new Buffer("ok"), {correlationId: msg.properties.correlationId});
+                          ch.ack(msg);
+                        });
+                      }
                     });
                 });
                 return ok.then(function() {
@@ -96,11 +99,10 @@ Flowra.prototype._connect = function() {
     }
 };
 
-Flowra.prototype._processMessage = function(message, action, cb) {
-
+Flowra.prototype._processMessage = function(data, action, cb) {
   async.series([
     function handle(done) {
-      action(message);
+      action(data);
       done();
     }
   ], function(err) {
