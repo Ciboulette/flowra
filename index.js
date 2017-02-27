@@ -114,17 +114,17 @@ Flowra.prototype._processMessage = function(message, action, cb) {
 };
 
 
-/**
- * TEST PART
- */
-const test = Flowra.create({
-  clientName: 'lion',
-  handleAction: function(message, done) {
-    console.log("hello");
-    console.log(message.content.toString());
-    done()
-  }
-});
-
-
-test.start();
+// /**
+//  * TEST PART
+//  */
+// const test = Flowra.create({
+//   clientName: 'lion',
+//   handleAction: function(message, done) {
+//     console.log("hello");
+//     console.log(message.content.toString());
+//     done()
+//   }
+// });
+//
+//
+// test.start();
