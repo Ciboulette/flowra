@@ -114,6 +114,8 @@ Flowra.prototype._processMessage = function(message, action, cb) {
 };
 
 
+module.exports = Flowra;
+
 // /**
 //  * TEST PART
 //  */
