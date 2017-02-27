@@ -4,7 +4,8 @@ require('dotenv').config()
 
 var EventEmitter = require('events').EventEmitter;
 var util = require('util');
-var requiredOptions = ['clientName'];
+var async = require('async');
+var requiredOptions = ['clientName', 'handleAction'];
 var amqp = require('amqplib');
 
 /**
@@ -29,12 +30,10 @@ function validate(options) {
  * A Flow consumer.
  * @param {object} options
  * @param {string} options.clientName
- * @param {function} options.handleAction
  */
 
 function Flowra(options) {
     validate(options);
-
     this.clientName = options.clientName;
     this.handleAction = options.handleAction;
     this.stopped = true;
@@ -70,9 +69,9 @@ Flowra.prototype.stop = function() {
 };
 
 Flowra.prototype._connect = function() {
-
+    var handleAction = this.handleAction;
     var clientName = this.clientName;
-    var handle = this.handle;
+    var _processMessage = this._processMessage;
     var url = this.url;
     if (!this.stopped) {
         return amqp.connect(url).then(function(conn) {
@@ -84,32 +83,48 @@ Flowra.prototype._connect = function() {
                 var ok = ok.then(function() {
                     ch.prefetch(1);
                     return ch.consume(clientName, function(msg) {
-                      handle(msg, ch);
+                      _processMessage(msg, handleAction, function() {
+                        ch.sendToQueue(msg.properties.replyTo, new Buffer("ok"), {correlationId: msg.properties.correlationId});
+                        ch.ack(msg);
+                      });
                     });
                 });
                 return ok.then(function() {
-                    console.log(' [x] Awaiting for Flow Elixir Server');
+                    console.log(' [x] Awaiting for Flow Server');
                 });
             })
         }).catch(console.warn);
     }
 };
 
-Flowra.prototype.handle = function(msg, ch) {
+Flowra.prototype._processMessage = function(message, action, cb) {
 
-    console.log(msg.content.toString());
-    ch.sendToQueue(msg.properties.replyTo, new Buffer("ok"), {correlationId: msg.properties.correlationId});
-    ch.ack(msg);
+  async.series([
+    function handle(done) {
+      action(message, done);
+    }
+  ], function(err) {
+    if(err) {
 
-}
+    } else {
+
+    }
+    cb();
+  });
+};
+
 
 /**
  * TEST PART
  */
-const test = Flowra.create({clientName: 'lion'});
+const test = Flowra.create({
+  clientName: 'lion',
+  handleAction: function(message, done) {
+    console.log("hello");
+    console.log(message.content.toString());
+    done()
+  }
+});
 
-// test.handle("welcome", function(response) {
-//   // console.log(response);
-// })
 
 test.start();
