@@ -100,7 +100,8 @@ Flowra.prototype._processMessage = function(message, action, cb) {
 
   async.series([
     function handle(done) {
-      action(message, done);
+      action(message);
+      done();
     }
   ], function(err) {
     if(err) {
