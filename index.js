@@ -1,5 +1,4 @@
 'use strict';
-var EventEmitter = require('events').EventEmitter;
 var util = require('util');
 var async = require('async');
 var requiredOptions = ['clientName', 'handleAction'];
@@ -34,86 +33,66 @@ function Flowra(options) {
     this.clientName = options.clientName;
     this.handleAction = options.handleAction;
     this.user = options.user;
-    this.password = options.password
-    this.stopped = true;
-    this.url =  "amqp://" + this.user + ":" + this.password + "@95.85.11.126:5672"
+    this.password = options.password;
+    this.url = "amqp://" + this.user + ":" + this.password + "@95.85.11.126:5672";
+    this._connect();
 }
-
-util.inherits(Flowra, EventEmitter);
 
 /**
  * Construct a new Flowra Consumer
  */
-Flowra.create = function(options) {
+Flowra.start = function(options) {
     return new Flowra(options)
 };
 
-/**
- * Start polling for actions.
- */
-Flowra.prototype.start = function() {
-    if (this.stopped) {
-        console.log('Starting flowra consumer');
-        this.stopped = false;
-        this._connect();
+Flowra.prototype.success = function(message) {
+    var that = this;
+    var response = {
+      data: message
     }
-};
+    that.channel.sendToQueue(that.msg.properties.replyTo, Buffer(JSON.stringify(response)), {correlationId: that.msg.properties.correlationId});
+    that.channel.ack(that.msg);
+}
 
-/**
- * Stop polling for actions.
- */
-Flowra.prototype.stop = function() {
-    console.log('Stoping flowra consumer');
-    this.stopped = true;
-};
+Flowra.prototype.failure = function(message) {
+    var that = this;
+    var response = {
+      error: {
+        detail: message
+      }
+    }
+    that.channel.sendToQueue(that.msg.properties.replyTo, Buffer(JSON.stringify(response)), {correlationId: that.msg.properties.correlationId});
+    that.channel.ack(that.msg);
+}
 
 Flowra.prototype._connect = function() {
-    var handleAction = this.handleAction;
-    var clientName = this.clientName;
-    var _processMessage = this._processMessage;
-    var url = this.url;
-    if (!this.stopped) {
-        return amqp.connect(url).then(function(conn) {
-            process.once('SIGINT', function() {
-                conn.close();
+    var that = this;
+    return amqp.connect(that.url).then(function(connection) {
+        process.once('SIGINT', function() {
+            connection.close();
+        });
+        return connection.createChannel().then(function(channel) {
+            var ok = channel.assertQueue(that.clientName, {durable: true});
+            ok.then(function() {
+                channel.prefetch(1);
+                return channel.consume(that.clientName, function(msg) {
+                    var data = JSON.parse(msg.content.toString());
+                    if (that.clientName == data.client) {
+                        that.channel = channel;
+                        that.msg = msg;
+                        that._processMessage(data, that.handleAction);
+                    }
+                });
             });
-            return conn.createChannel().then(function(ch) {
-                var ok = ch.assertQueue(clientName, {durable: true});
-                var ok = ok.then(function() {
-                    ch.prefetch(1);
-                    return ch.consume(clientName, function(msg) {
-                      var data = JSON.parse(msg.content.toString());
-                      if(clientName == data.client) {
-                        _processMessage(data, handleAction, function() {
-                          ch.sendToQueue(msg.properties.replyTo, new Buffer("ok"), {correlationId: msg.properties.correlationId});
-                          ch.ack(msg);
-                        });
-                      }
-                    });
-                });
-                return ok.then(function() {
-                    console.log(' [x] Awaiting for Flow Server');
-                });
-            })
-        }).catch(console.warn);
-    }
+            return ok.then(function() {
+                console.log(' [x] Awaiting for Flow Server');
+            });
+        })
+    }).catch(console.warn);
 };
 
 Flowra.prototype._processMessage = function(data, action, cb) {
-  async.series([
-    function handle(done) {
-      action(data);
-      done();
-    }
-  ], function(err) {
-    if(err) {
-
-    } else {
-
-    }
-    cb();
-  });
+    action(data);
 };
-
 
 module.exports = Flowra;
