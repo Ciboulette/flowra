@@ -11,6 +11,7 @@ npm install flowra --save
 
 ### Configuration
 
+After installing, you need to setup your worker with the information you can get on [simpleFlow](http://simpleflow.io)
 ```js
 const Flowra = require('flowra').config({
   app_env: 'dev || prod',
