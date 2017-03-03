@@ -1,6 +1,8 @@
 # Flowra
 
-⛔️  This project is currently in development and not working for public ⛔️  If you're interested please contact me : louis@thefamily.co
+⛔️  This project is currently in development and not working for public ⛔️  
+
+If you're interested please contact me : [here](louis@thefamily.co)
 
 Build workflow have never been such easy. Just define your worker functions and call it when you need with this library in your current project.
 
