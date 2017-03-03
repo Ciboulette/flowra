@@ -26,7 +26,7 @@ When everything is setup well, you can start your worker with this function
 flowra.worker.start(function(taskName, data, onSuccess, onFail) {
   // Job to be done including these functions
   onSuccess("Everything went well");
-  onFail("Oups! error);
+  onFail("Oups! error");
 });
 ```
 
