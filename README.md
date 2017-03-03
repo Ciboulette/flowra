@@ -17,12 +17,19 @@ const Flowra = require('flowra').config({
   app_env: 'dev || prod',
   app_id: 'YOUR_APP_ID',
   user_token: 'YOUR_USER_TOKEN',
-
 });
-
 ```
 
 ## Workflow
+
+You also need to setup your workflow with your app informations on server-side
+```js
+const Flowra = require('flowra').config({
+  app_env: 'dev || prod',
+  app_id: 'YOUR_APP_ID',
+  user_token: 'YOUR_USER_TOKEN',
+});
+```
 
 ### Notes
 
