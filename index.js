@@ -166,36 +166,10 @@ Flowra.prototype.workflow.start = function(options) {
       if(error) {
         reject(error);
       }
-      return body;
-      // resolve(body);
+      resolve(body);
     });
   });
 }
 
 
 module.exports = Flowra;
-
-
-// var flowra = Flowra.config({
-//   app_env: 'dev',
-//   app_id: 'XRGWFHIYLB',
-//   user_token: 'g0FaDKccf5yThXZh8DQfl4b2dH81o4YxPfhPzVvtm1eW4TrIkGH3nggPjytr',
-// });
-//
-//
-// // flowra.worker.start(function(taskName, data, onSuccess, onFail) {
-// //   // echo(msg);
-// //   console.log(taskName);
-// //   console.log(data);
-// //   onSuccess(data);
-// // });
-//
-// flowra.workflow.start({ type: "mail", data: "hello"});
-//
-// //
-// // flowra.workflow.event({
-// //     workflow_id:
-// //     name:
-// //     data:
-// // }).fail()
-// // .success()
