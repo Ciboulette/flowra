@@ -19,6 +19,17 @@ const Flowra = require('flowra').config({
   user_token: 'YOUR_USER_TOKEN',
 });
 ```
+### Start a worker
+
+When everything is setup well, you can start your worker with this function
+```js
+flowra.worker.start(function(taskName, data, onSuccess, onFail) {
+  // Job to be done including these functions
+  onSuccess("Everything went well");
+  onFail("Oups! error);
+});
+```
+
 
 ## Workflow
 
