@@ -1,0 +1,19 @@
+language: node_js
+node_js:
+  - stable
+before_install: npm prune
+before_cache: npm prune
+install: npm install
+script:
+  - npm run test-ci
+  - npm run doc
+  - npm run test:perf
+branches:
+  only:
+    - master
+sudo: false
+cache:
+  directories:
+    - node_modules
+env:
+  global:

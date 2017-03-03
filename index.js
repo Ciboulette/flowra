@@ -1,67 +1,124 @@
 'use strict';
 var util = require('util');
-var requiredOptions = ['application_id', 'handleAction', 'api_key'];
 var amqp = require('amqplib');
 var request = require('request');
-/**
- * Construct a new FlowError
- */
-function FlowError(message) {
-    Error.captureStackTrace(this, this.constructor);
-    this.name = this.constructor.name;
-    this.message = (message || '');
-}
-util.inherits(FlowError, Error);
+var config = require('./config');
+var requiredConfigOptions = ['app_id', 'user_token'];
+var requiredWorkflowOptions = ['type', 'data'];
 
-function validate(options) {
-    requiredOptions.forEach(function(option) {
-        if (!options[option]) {
-            throw new Error('Missing Flow consumer option [' + option + '].');
-        }
-    });
+function configValidation(options) {
+  requiredConfigOptions.forEach(function(option) {
+      if (!options[option]) {
+          throw new Error('Missing Flow worker option [' + option + '].');
+      }
+  });
 }
 
+function workflowValidation(options) {
+  requiredWorkflowOptions.forEach(function(option) {
+      if (!options[option]) {
+          throw new Error('Missing Flow worker option [' + option + '].');
+      }
+  });
+}
+
 /**
- * A Flow consumer.
+ * A Flowra instance.
  * @param {object} options
- * @param {string} options.clientName
+ * @param {string} options.app_id
+ * @param {string} options.app_env
+ * @param {string} options.user_token
  */
-
 function Flowra(options) {
-    validate(options);
-    this.application_id = options.application_id;
-    this.api_key = options.api_key;
-    this.handleAction = options.handleAction;
-    var that = this;
+  this.app_id = options.app_id;
+  this.user_token = options.user_token;
+  this.app_env = options.app_env ? options.app_env : 'prod';
 
-    var options = {
-        url: 'http://flow.dev/api/rabbitmq/' + this.application_id + '?api_token=' + this.api_key,
+  // Functions
+  this._getRabbitMQCredentials = this._getRabbitMQCredentials.bind(this);
+  this.worker.start = this.worker.start.bind(this);
+  this._success = this._success.bind(this);
+  this._failure = this._failure.bind(this);
+  this.workflow.start = this.workflow.start.bind(this);
+
+}
+
+/**
+ * Construct a new Flowra Instance
+ */
+Flowra.config = function(options) {
+  configValidation(options);
+  return new Flowra(options);
+};
+
+Flowra.prototype._getRabbitMQCredentials = function() {
+  var that = this;
+  return new Promise(function(resolve, reject) {
+    var headers = {
+        url: 'http://flow.dev/api/rabbitmq/?app_env=' + that.app_env + '&app_id=' + that.app_id + '&api_token=' + that.user_token,
         headers: {
             'Accept': 'application/json'
         }
     };
-
-    request(options, function(error, response, body) {
-        const data = JSON.parse(body);
-        if (data.user && data.password) {
-            that.url = "amqp://" + data.user + ":" + data.password + "@localhost:5672/";
-            that._connect();
-        } else {
+    request(headers, function(error, response, body) {
+        var data = JSON.parse(body);
+        if (!(data.rabbitMQ_user && data.rabbitMQ_password)) {
             console.log("bad identifiants:" + data.error);
+            reject(data.error);
         }
+        var url = "amqp://" + data.rabbitMQ_user + ":" + data.rabbitMQ_password + "@95.85.11.126:5672";
+        var queue = data.rabbitMQ_queue;
+        resolve({url: url, queue: queue });
     });
+
+  });
 }
 
 /**
- * Construct a new Flowra Consumer
+ * Connect function
+ * private
  */
-Flowra.start = function(options) {
-
-    return new Flowra(options)
-};
-
-Flowra.prototype.success = function(message) {
+Flowra.prototype._connect = function(callback) {
     var that = this;
+    return amqp.connect(that.url).then(function(connection) {
+        process.once('SIGINT', function() {
+            connection.close();
+        });
+        return connection.createChannel().then(function(channel) {
+            channel.prefetch(1);
+            console.log(' [x] Awaiting for Flow Server');
+            return channel.consume(that.queue, function(msg) {
+                var data = JSON.parse(msg.content.toString());
+                that.channel = channel;
+                that.msg = msg;
+                callback("task", data, that._success, that._failure);
+            });
+        })
+    }).catch(console.warn);
+}
+
+Flowra.prototype.worker = {};
+Flowra.prototype.worker.start = function(callback) {
+  var that = this;
+  this._getRabbitMQCredentials()
+    .then(function(data) {
+      that.queue = data.queue;
+      that.url = data.url;
+      that._connect(callback);
+    })
+    .catch(function(error) {
+      console.log(error);
+    });
+}
+
+
+/**
+ * Success function when the worker is done and can respond to the server
+ * used by the worker
+ */
+Flowra.prototype._success = function(message) {
+    var that = this;
+
     var response = {
         data: message
     }
@@ -69,7 +126,11 @@ Flowra.prototype.success = function(message) {
     that.channel.ack(that.msg);
 }
 
-Flowra.prototype.failure = function(message) {
+/**
+ * Failure function when the worker is sending error
+ * used by the worker
+ */
+Flowra.prototype._failure = function(message) {
     var that = this;
     var response = {
         error: {
@@ -80,31 +141,61 @@ Flowra.prototype.failure = function(message) {
     that.channel.ack(that.msg);
 }
 
-Flowra.prototype._connect = function() {
-    var that = this;
-    return amqp.connect(that.url).then(function(connection) {
-        process.once('SIGINT', function() {
-            connection.close();
-        });
-        return connection.createChannel().then(function(channel) {
-            var ok = channel.assertQueue(that.application_id, {durable: true});
-            ok.then(function() {
-                channel.prefetch(1);
-                console.log(' [x] Awaiting for Flow Server');
-                return channel.consume(that.application_id, function(msg) {
-                    var data = JSON.parse(msg.content.toString());
-                    that.channel = channel;
-                    that.msg = msg;
-                    that._processMessage(data, that.handleAction);
-                });
-            });
-            return ok.then(function() {});
-        })
-    }).catch(console.warn);
-};
 
-Flowra.prototype._processMessage = function(data, action, cb) {
-    action(data);
-};
+Flowra.prototype.workflow = {};
+Flowra.prototype.workflow.start = function(options) {
+  workflowValidation(options);
+
+  this.type = options.type;
+  this.data = options.data;
+  var that = this;
+  return new Promise(function(resolve, reject) {
+    var headers = {
+        url: 'http://flow.dev/api/workflows/?app_env=' + that.app_env + '&app_id=' + that.app_id + '&api_token=' + that.user_token,
+        headers: {
+            'Accept': 'application/json'
+        },
+        form: {
+          type: that.type,
+          payload: {
+            data: that.data,
+          }
+        }
+    };
+    request.post(headers, function(error, response, body) {
+      if(error) {
+        reject(error);
+      }
+      return body;
+      // resolve(body);
+    });
+  });
+}
+
 
 module.exports = Flowra;
+
+
+// var flowra = Flowra.config({
+//   app_env: 'dev',
+//   app_id: 'XRGWFHIYLB',
+//   user_token: 'g0FaDKccf5yThXZh8DQfl4b2dH81o4YxPfhPzVvtm1eW4TrIkGH3nggPjytr',
+// });
+//
+//
+// // flowra.worker.start(function(taskName, data, onSuccess, onFail) {
+// //   // echo(msg);
+// //   console.log(taskName);
+// //   console.log(data);
+// //   onSuccess(data);
+// // });
+//
+// flowra.workflow.start({ type: "mail", data: "hello"});
+//
+// //
+// // flowra.workflow.event({
+// //     workflow_id:
+// //     name:
+// //     data:
+// // }).fail()
+// // .success()
