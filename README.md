@@ -22,6 +22,8 @@ const Flowra = require('flowra').config({
 
 ## Workflow
 
+### Configuration
+
 You also need to setup your workflow with your app informations on server-side
 ```js
 const Flowra = require('flowra').config({
