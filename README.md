@@ -1,9 +1,5 @@
 # Flowra
 
-⛔️  This project is currently in development and not working for public ⛔️  
-
-If you're interested please contact me : [here](mailto:louis@thefamily.co?Subject=Project%20Flowra%20Questions)
-
 Build workflow have never been such easy. Just define your worker functions and call it when you need with this library in your current project.
 
 ## Installation
@@ -27,3 +23,8 @@ const Flowra = require('flowra').config({
 ```
 
 ## Workflow
+
+### Notes
+
+⛔️  This project is currently in development and not working for public ⛔️  
+If you're interested please contact me : [here](mailto:louis@thefamily.co?Subject=Project%20Flowra%20Questions)
