@@ -46,6 +46,7 @@ const Flowra = require('flowra').config({
 
 ### Start a workflow
 
+To make it work, you have to include this function in your code when you want to call your workflow 
 ```js
 Flowra.workflow.start({
   type: "YOUR_WORKFLOW_TYPE",
