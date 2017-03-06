@@ -32,7 +32,7 @@ function workflowValidation(options) {
 function Flowra(options) {
   this.app_id = options.app_id;
   this.user_token = options.user_token;
-  this.app_env = options.app_env ? options.app_env : 'prod';
+  this.app_env = options.app_env ? options.app_env : config.env;
 
   // Functions
   this._getRabbitMQCredentials = this._getRabbitMQCredentials.bind(this);
@@ -40,7 +40,6 @@ function Flowra(options) {
   this._success = this._success.bind(this);
   this._failure = this._failure.bind(this);
   this.workflow.start = this.workflow.start.bind(this);
-
 }
 
 /**
@@ -55,7 +54,7 @@ Flowra.prototype._getRabbitMQCredentials = function() {
   var that = this;
   return new Promise(function(resolve, reject) {
     var headers = {
-        url: 'http://flow.dev/api/rabbitmq/?app_env=' + that.app_env + '&app_id=' + that.app_id + '&api_token=' + that.user_token,
+        url: `${config.url}/rabbitmq/?app_env=${that.app_env}&app_id=${that.app_id}&api_token=${that.user_token}`,
         headers: {
             'Accept': 'application/json'
         }
@@ -66,7 +65,7 @@ Flowra.prototype._getRabbitMQCredentials = function() {
             console.log("bad identifiants:" + data.error);
             reject(data.error);
         }
-        var url = "amqp://" + data.rabbitMQ_user + ":" + data.rabbitMQ_password + "@95.85.11.126:5672";
+        var url = `amqp://${data.rabbitMQ_user}:${data.rabbitMQ_password}@${config.rabbitMQ_ip}:${config.rabbitMQ_port}`;
         var queue = data.rabbitMQ_queue;
         resolve({url: url, queue: queue });
     });
@@ -86,7 +85,7 @@ Flowra.prototype._connect = function(callback) {
         });
         return connection.createChannel().then(function(channel) {
             channel.prefetch(1);
-            console.log(' [x] Awaiting for Flow Server');
+            console.log(' [x] Awaiting for Flowra Engine');
             return channel.consume(that.queue, function(msg) {
                 var data = JSON.parse(msg.content.toString());
                 that.channel = channel;
@@ -110,7 +109,6 @@ Flowra.prototype.worker.start = function(callback) {
       console.log(error);
     });
 }
-
 
 /**
  * Success function when the worker is done and can respond to the server
@@ -141,7 +139,6 @@ Flowra.prototype._failure = function(message) {
     that.channel.ack(that.msg);
 }
 
-
 Flowra.prototype.workflow = {};
 Flowra.prototype.workflow.start = function(options) {
   workflowValidation(options);
@@ -151,7 +148,7 @@ Flowra.prototype.workflow.start = function(options) {
   var that = this;
   return new Promise(function(resolve, reject) {
     var headers = {
-        url: 'http://flow.dev/api/workflows/?app_env=' + that.app_env + '&app_id=' + that.app_id + '&api_token=' + that.user_token,
+        url: `${config.url}/workflows/?app_env=${that.app_env}&app_id=${that.app_id}&api_token=${that.user_token}`,
         headers: {
             'Accept': 'application/json'
         },
