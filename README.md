@@ -48,7 +48,7 @@ const Flowra = require('flowra').config({
 
 ```js
 Flowra.workflow.start({
-  type: "Your workflow type",
+  type: "YOUR_WORKFLOW_TYPE",
   data: {
     
   }
